@@ -14,5 +14,4 @@ import javax.inject.Singleton
 @Singleton
 class ModelManager @Inject constructor() {
 
-    val status: String = "ModelManager alive — no model loaded"
 }

@@ -23,7 +23,7 @@ fun MainScreen(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = uiState.statusText,
+            text = uiState.chatMessage.content,
             style = MaterialTheme.typography.bodyLarge
         )
     }
