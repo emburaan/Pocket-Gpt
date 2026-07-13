@@ -1,6 +1,7 @@
 package com.sumit.pocketgpt.presentation.main
 
 import androidx.lifecycle.ViewModel
+import com.sumit.pocketgpt.data.inference.ModelManager
 import com.sumit.pocketgpt.domain.inference.ModelState
 import com.sumit.pocketgpt.domain.model.ChatMessage
 import com.sumit.pocketgpt.domain.model.Role
@@ -13,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val modelManager: ModelManager
 ) : ViewModel() {
 
     private val chatMessage: ChatMessage = ChatMessage(Role.USER, "Hello AI World", 11111111)

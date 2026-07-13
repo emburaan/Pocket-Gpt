@@ -1,5 +1,6 @@
 package com.sumit.pocketgpt.data.inference
 
+import com.sumit.pocketgpt.domain.inference.InferenceEngine
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -8,10 +9,18 @@ import javax.inject.Singleton
  *
  * The wrapper is application-scoped so the multi-GB model is created at most
  * once per process, but the weights' lifetime is decoupled from the object's:
- * load/unload will be added in M3 so memory can be released under pressure
+ * load/unload can be called so memory can be released under pressure
  * without losing the singleton.
  */
 @Singleton
-class ModelManager @Inject constructor() {
+class ModelManager @Inject constructor(
+    private val inferenceEngine: InferenceEngine
+) {
+
+    val modelState = inferenceEngine.modelState
+
+    suspend fun load() = inferenceEngine.load()
+
+    suspend fun unload() = inferenceEngine.unload()
 
 }

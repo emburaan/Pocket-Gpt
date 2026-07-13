@@ -10,10 +10,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-class FakeInferenceEngine : InferenceEngine {
+class FakeInferenceEngine @Inject constructor() : InferenceEngine {
 
     private val isGenerating = AtomicBoolean(false)
     private val _modelState = MutableStateFlow<ModelState>(
