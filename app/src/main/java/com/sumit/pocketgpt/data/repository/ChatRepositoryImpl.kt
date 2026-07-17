@@ -12,6 +12,7 @@ class ChatRepositoryImpl @Inject constructor(
 
 
     override fun sendMessage(chatMessage: ChatMessage): Flow<String> {
-        TODO("M2: delegate to InferenceEngine")
+        val message = chatMessage.content
+        return inferenceEngine.generate(message)
     }
 }
