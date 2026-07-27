@@ -43,31 +43,48 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
 
     fun sendMessage(chatMessage: ChatMessage) {
+        // Guard: the engine's contract is one-generation-at-a-time — a concurrent
+        // collection throws IllegalStateException and "does not queue". Drop-policy:
+        // ignore a send issued while one is already in flight.
+        if (_uiState.value.isGenerating) return
+
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    chatMessages = it.chatMessages + chatMessage
+                    chatMessages = it.chatMessages + chatMessage,
+                    isGenerating = true,
+                    showError = false,
                 )
             }
             if (modelManager.modelState.value != ModelState.Ready) {
                 modelManager.load()
             }
-            chatRepository.sendMessage(chatMessage).collect { reply ->
-                _uiState.update { chatUIState ->
-                    chatUIState.copy(
-                        streamingReply = (chatUIState.streamingReply ?: "") + reply
+            try {
+                // Per-token: append each delta to the in-flight reply.
+                chatRepository.sendMessage(chatMessage).collect { reply ->
+                    _uiState.update {
+                        it.copy(streamingReply = (it.streamingReply ?: "") + reply)
+                    }
+                }
+                // Once, on normal completion: commit the assembled reply to history.
+                _uiState.update {
+                    it.copy(
+                        chatMessages = it.chatMessages + ChatMessage(
+                            role = Role.MODEL,
+                            content = it.streamingReply ?: "",
+                            createdAt = System.currentTimeMillis(),
+                        ),
+                        streamingReply = null,
                     )
                 }
-            }
-            _uiState.update {
-                it.copy(
-                    chatMessages = it.chatMessages + ChatMessage(
-                        role = Role.MODEL,
-                        content = it.streamingReply ?: "",
-                        createdAt = System.currentTimeMillis()
-                    ),
-                    streamingReply = null
-                )
+            } catch (_: IllegalStateException) {
+                // Documented failure (not loaded / concurrent). Surface, don't crash.
+                _uiState.update { it.copy(showError = true) }
+            } finally {
+                // Cleanup only — runs on success, failure, and cancellation.
+                _uiState.update {
+                    it.copy(streamingReply = null, isGenerating = false)
+                }
             }
         }
     }

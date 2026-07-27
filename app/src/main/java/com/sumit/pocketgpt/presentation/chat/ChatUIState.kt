@@ -7,4 +7,6 @@ data class ChatUIState(
     val modelState: ModelState,
     val chatMessages: List<ChatMessage>,
     val streamingReply: String? = null,
+    val showError: Boolean = false,
+    val isGenerating: Boolean = false,
 )

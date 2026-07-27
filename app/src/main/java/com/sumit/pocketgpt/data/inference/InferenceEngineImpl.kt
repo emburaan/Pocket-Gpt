@@ -11,7 +11,6 @@ import com.sumit.pocketgpt.domain.inference.InferenceEngine
 import com.sumit.pocketgpt.domain.inference.ModelState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,11 +48,21 @@ class InferenceEngineImpl @Inject constructor(
         val activeEngine = engine ?: error("engine is null despite Ready state")
         try {
             activeEngine.createConversation().use { conversation ->
-                conversation.sendMessageAsync(prompt).collect { message ->
-                    val text = message.contents.contents
-                        .filterIsInstance<Content.Text>()
-                        .joinToString("") { it.text }
-                    emit(text)
+                try {
+
+                    conversation.sendMessageAsync(prompt).collect { message ->
+                        val text = message.contents.contents
+                            .filterIsInstance<Content.Text>()
+                            .joinToString("") { it.text }
+                        // LiteRT-LM emits deltas, not snapshots: each callback carries
+                        // only the latest chunk, so collectors must concatenate. If a
+                        // future version switched to cumulative snapshots this would still
+                        // compile but duplicate text at runtime. See docs/api/kotlin.
+                        emit(text)
+                    }
+                } catch (e: CancellationException) {
+                    conversation.cancelProcess()
+                    throw e
                 }
             }
         } finally {
