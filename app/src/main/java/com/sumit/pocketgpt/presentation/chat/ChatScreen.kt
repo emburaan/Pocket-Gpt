@@ -9,7 +9,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,14 +30,32 @@ import com.sumit.pocketgpt.ui.theme.PocketGPTTheme
  * user typed. Owns no business state — how messages, streaming, and errors
  * are modeled is the ViewModel layer's decision.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     messages: List<ChatMessage>,
     onSend: (String) -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = "",
     sendEnabled: Boolean = true,
 ) {
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -68,6 +93,8 @@ private fun ChatScreenPreview() {
                 ChatMessage(Role.MODEL, "A local inference engine — no network involved.", createdAt = 1L),
             ),
             onSend = {},
+            onBack = {},
+            title = "What runs the model on device?",
         )
     }
 }

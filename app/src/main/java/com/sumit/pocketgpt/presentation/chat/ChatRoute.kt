@@ -15,8 +15,9 @@ import java.util.Date
 
 @Composable
 fun ChatRoute(
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ChatViewModel = hiltViewModel()
+    viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -35,6 +36,8 @@ fun ChatRoute(
                     ChatMessage(role = Role.USER, content = typedText, createdAt = Date().time)
                 )
             },
+            onBack = onBack,
+            title = uiState.conversationTitle,
             sendEnabled = uiState.modelState == ModelState.Ready && uiState.streamingReply == null,
         )
     }

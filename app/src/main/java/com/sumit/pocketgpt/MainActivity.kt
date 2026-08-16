@@ -4,11 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
-import com.sumit.pocketgpt.presentation.chat.ChatRoute
+import com.sumit.pocketgpt.presentation.navigation.PocketGptNavHost
 import com.sumit.pocketgpt.ui.theme.PocketGPTTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -19,9 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PocketGPTTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ChatRoute(modifier = Modifier.padding(innerPadding))
-                }
+                PocketGptNavHost()
             }
         }
     }
