@@ -2,7 +2,8 @@
 
 An Android chat app that runs a large language model **entirely on-device** — no network calls, no server, no API key. Powered by [LiteRT-LM](https://ai.google.dev/edge/litert) running Google's Gemma model locally.
 
-<img src="docs/screenshot_chat.png" alt="PocketGPT conversation list" width="320" />
+<img src="docs/screenshot_conversations.png" alt="PocketGPT conversation list" width="320" />
+<img src="docs/screenshot_chat_thread.png" alt="PocketGPT chat thread" width="320" />
 
 ## Features
 
