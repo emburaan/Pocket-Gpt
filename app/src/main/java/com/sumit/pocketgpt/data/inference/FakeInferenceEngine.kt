@@ -4,6 +4,8 @@ package com.sumit.pocketgpt.data.inference
 
 import com.sumit.pocketgpt.domain.inference.InferenceEngine
 import com.sumit.pocketgpt.domain.inference.ModelState
+import com.sumit.pocketgpt.domain.model.ChatMessage
+import com.sumit.pocketgpt.domain.model.Role
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +24,22 @@ class FakeInferenceEngine @Inject constructor() : InferenceEngine {
     )
     override val modelState: StateFlow<ModelState> = _modelState.asStateFlow()
 
-    override fun generate(prompt: String): Flow<String> = flow {
-        require(prompt.isNotBlank()) { "Prompt must not be blank" }
+    /**
+     * The conversation handed to the last accepted [generate] call. A test affordance:
+     * the real engine retains nothing, this exists so callers can be tested on what
+     * history they assembled.
+     */
+    var lastMessages: List<ChatMessage>? = null
+        private set
+
+    override fun generate(messages: List<ChatMessage>): Flow<String> = flow {
+        require(messages.isNotEmpty()) { "messages must not be empty" }
+
+        val newTurn = messages.last()
+        require(newTurn.role == Role.USER) {
+            "Last message must be from ${Role.USER}, was ${newTurn.role}"
+        }
+        require(newTurn.content.isNotBlank()) { "Last message content must not be blank" }
 
         check(modelState.value == ModelState.Ready) {
             "Model is not loaded — call load() before generate()"
@@ -31,6 +47,8 @@ class FakeInferenceEngine @Inject constructor() : InferenceEngine {
         check(isGenerating.compareAndSet(expectedValue = false, newValue = true)) {
             "a generation is already active on this engine"
         }
+        lastMessages = messages
+
         val response = "This is a fake streamed reply from PocketGPT running fully on device."
         try {
             for (chunk in response.split(" ")) {

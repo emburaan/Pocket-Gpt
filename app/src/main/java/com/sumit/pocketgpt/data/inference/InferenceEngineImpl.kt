@@ -3,12 +3,16 @@
 package com.sumit.pocketgpt.data.inference
 
 import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
 import com.sumit.pocketgpt.di.CacheDir
 import com.sumit.pocketgpt.di.ModelPath
 import com.sumit.pocketgpt.domain.inference.InferenceEngine
 import com.sumit.pocketgpt.domain.inference.ModelState
+import com.sumit.pocketgpt.domain.model.ChatMessage
+import com.sumit.pocketgpt.domain.model.Role
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -35,8 +39,15 @@ class InferenceEngineImpl @Inject constructor(
     private var engine: Engine? = null
     override val modelState: StateFlow<ModelState> = _modelState.asStateFlow()
 
-    override fun generate(prompt: String): Flow<String> = flow {
-        require(prompt.isNotBlank()) { "Prompt must not be blank" }
+    override fun generate(messages: List<ChatMessage>): Flow<String> = flow {
+        require(messages.isNotEmpty()) { "messages must not be empty" }
+
+        val newTurn = messages.last()
+        require(newTurn.role == Role.USER) {
+            "Last message must be from ${Role.USER}, was ${newTurn.role}"
+        }
+
+        require(newTurn.content.isNotBlank()) { "Last message content must not be blank" }
 
         check(modelState.value == ModelState.Ready) {
             "Model is not loaded — call load() before generate()"
@@ -45,11 +56,12 @@ class InferenceEngineImpl @Inject constructor(
         check(isGenerating.compareAndSet(expectedValue = false, newValue = true)) {
             "a generation is already active on this engine"
         }
+        val chatHistory = messages.dropLast(1)
+        val prompt = messages.last().content
         val activeEngine = engine ?: error("engine is null despite Ready state")
         try {
             activeEngine.createConversation().use { conversation ->
                 try {
-
                     conversation.sendMessageAsync(prompt).collect { message ->
                         val text = message.contents.contents
                             .filterIsInstance<Content.Text>()
@@ -96,4 +108,16 @@ class InferenceEngineImpl @Inject constructor(
         engine = null
     }
 
+}
+
+internal fun ChatMessage.toLiteRtMessage(): Message {
+    return when(this.role) {
+        Role.USER -> {
+            Message.user(content)
+        }
+
+        Role.MODEL -> {
+            Message.model(Contents.of(content))
+        }
+    }
 }
