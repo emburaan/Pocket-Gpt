@@ -1,7 +1,8 @@
 package com.sumit.pocketgpt.presentation.conversations
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -59,15 +61,20 @@ fun ConversationListScreen(
                 )
             }
         } else {
-            LazyColumn(modifier = Modifier.padding(innerPadding)) {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(conversations, key = { it.id }) { conversation ->
-                    ListItem(
-                        headlineContent = { Text(conversation.title) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onConversationClick(conversation.id) }
-                            .padding(horizontal = 4.dp),
-                    )
+                    Card(
+                        onClick = { onConversationClick(conversation.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        ListItem(headlineContent = { Text(conversation.title) })
+                    }
                 }
             }
         }
