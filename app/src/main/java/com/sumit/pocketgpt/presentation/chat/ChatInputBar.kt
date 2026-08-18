@@ -2,6 +2,7 @@ package com.sumit.pocketgpt.presentation.chat
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -30,6 +31,12 @@ internal fun ChatInputBar(
 ) {
     var input by remember { mutableStateOf("") }
 
+    fun send() {
+        if (!sendEnabled || input.isBlank()) return
+        onSend(input)
+        input = ""
+    }
+
     Row(
         modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom,
@@ -43,13 +50,11 @@ internal fun ChatInputBar(
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Send
-            )
+            ),
+            keyboardActions = KeyboardActions(onSend = { send() }),
         )
         IconButton(
-            onClick = {
-                onSend(input)
-                input = ""
-            },
+            onClick = ::send,
             enabled = sendEnabled && input.isNotBlank(),
         ) {
             Icon(
