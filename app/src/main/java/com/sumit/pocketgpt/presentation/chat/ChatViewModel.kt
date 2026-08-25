@@ -6,14 +6,19 @@ import androidx.lifecycle.viewModelScope
 import com.sumit.pocketgpt.data.inference.ModelManager
 import com.sumit.pocketgpt.domain.inference.ModelState
 import com.sumit.pocketgpt.domain.model.ChatMessage
+import com.sumit.pocketgpt.domain.model.Role
 import com.sumit.pocketgpt.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,6 +37,10 @@ class ChatViewModel @Inject constructor(
                 modelState = ModelState.Unloaded,
             )
         )
+    val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
+
+    private val _effects = Channel<ChatEffect>(Channel.BUFFERED)
+    val effects: Flow<ChatEffect> = _effects.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -67,11 +76,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
-
-    /** Re-runs setup (download + load) after a failure. */
-    fun retrySetup() {
-        viewModelScope.launch { loadModel() }
+    /** Single entry point for every user-initiated action on this screen. */
+    fun onIntent(intent: ChatIntent) {
+        when (intent) {
+            is ChatIntent.SendMessage -> sendMessage(intent.text)
+            ChatIntent.RetrySetup -> viewModelScope.launch { loadModel() }
+        }
     }
 
     // Download/load failures already reach the UI via downloadState/modelState —
@@ -87,19 +97,16 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun sendMessage(chatMessage: ChatMessage) {
+    private fun sendMessage(text: String) {
         // Guard: the engine's contract is one-generation-at-a-time — a concurrent
         // collection throws IllegalStateException and "does not queue". Drop-policy:
         // ignore a send issued while one is already in flight.
-        if (_uiState.value.isGenerating) return
+        if (_uiState.value.isGenerating || text.isBlank()) return
+
+        val chatMessage = ChatMessage(role = Role.USER, content = text, createdAt = Date().time)
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isGenerating = true,
-                    showError = false,
-                )
-            }
+            _uiState.update { it.copy(isGenerating = true) }
             if (modelManager.modelState.value != ModelState.Ready) {
                 loadModel()
             }
@@ -112,8 +119,10 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } catch (_: IllegalStateException) {
-                // Documented failure (not loaded / concurrent). Surface, don't crash.
-                _uiState.update { it.copy(showError = true) }
+                // Documented failure (not loaded / concurrent). A one-time event,
+                // not state — it shouldn't persist across recomposition or replay
+                // to a screen that's already moved on.
+                _effects.send(ChatEffect.ShowSendError)
             } finally {
                 // Cleanup only — runs on success, failure, and cancellation.
                 _uiState.update {

@@ -10,6 +10,13 @@ data class ChatUIState(
     val downloadState: DownloadState = DownloadState.NotStarted,
     val conversationTitle: String = "",
     val streamingReply: String? = null,
-    val showError: Boolean = false,
     val isGenerating: Boolean = false,
-)
+) {
+    val isModelReady: Boolean get() = modelState == ModelState.Ready
+
+    /** Whether the input bar's send action should be enabled — the View renders this, doesn't decide it. */
+    val sendEnabled: Boolean get() = isModelReady && streamingReply == null
+
+    /** Whether the blocking setup dialog should show — the View renders this, doesn't decide it. */
+    val showSetupDialog: Boolean get() = !isModelReady
+}
