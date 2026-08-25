@@ -40,5 +40,13 @@ fun ChatRoute(
             title = uiState.conversationTitle,
             sendEnabled = uiState.modelState == ModelState.Ready && uiState.streamingReply == null,
         )
+
+        if (uiState.modelState != ModelState.Ready) {
+            ModelSetupDialog(
+                modelState = uiState.modelState,
+                downloadState = uiState.downloadState,
+                onRetry = viewModel::retrySetup,
+            )
+        }
     }
 }

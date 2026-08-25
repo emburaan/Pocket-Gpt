@@ -8,6 +8,7 @@ import com.sumit.pocketgpt.domain.inference.ModelState
 import com.sumit.pocketgpt.domain.model.ChatMessage
 import com.sumit.pocketgpt.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,18 @@ class ChatViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            modelManager.load()
+            modelManager.downloadState.collect { newState ->
+                _uiState.update { it.copy(downloadState = newState) }
+            }
+        }
+        // Guard: ModelManager is app-scoped and may already be Ready from a
+        // previous chat screen — every conversation gets its own ChatViewModel,
+        // so an unconditional load() here would re-init the multi-GB engine
+        // (and re-show the setup dialog) on every navigation.
+        viewModelScope.launch {
+            if (modelManager.modelState.value != ModelState.Ready) {
+                loadModel()
+            }
         }
         // Repo is the source of truth for message history — mirror it instead of
         // maintaining a second, drift-prone copy locally.
@@ -57,6 +69,24 @@ class ChatViewModel @Inject constructor(
 
     val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
 
+    /** Re-runs setup (download + load) after a failure. */
+    fun retrySetup() {
+        viewModelScope.launch { loadModel() }
+    }
+
+    // Download/load failures already reach the UI via downloadState/modelState —
+    // swallowing the exception here (after letting cancellation through) just
+    // stops it from also crashing the app as an uncaught coroutine exception.
+    private suspend fun loadModel() {
+        try {
+            modelManager.load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // handled via state
+        }
+    }
+
     fun sendMessage(chatMessage: ChatMessage) {
         // Guard: the engine's contract is one-generation-at-a-time — a concurrent
         // collection throws IllegalStateException and "does not queue". Drop-policy:
@@ -71,7 +101,7 @@ class ChatViewModel @Inject constructor(
                 )
             }
             if (modelManager.modelState.value != ModelState.Ready) {
-                modelManager.load()
+                loadModel()
             }
             try {
                 // Per-token: append each delta to the in-flight reply. The persisted
